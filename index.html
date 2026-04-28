@@ -1,67 +1,236 @@
-// Minimal Node/Express proxy for /api/generate
-// Requirements: Node 18+ (has global fetch), or install node-fetch for older Node.
-const express = require('express');
-const path = require('path');
-const app = express();
-const PORT = process.env.PORT || 3000;
+import os
 
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public'))); // serve index.html from ./public
+# Define the HTML content with embedded CSS and JS
+html_content = """
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BẠN ĐỒ SAO Zz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background: radial-gradient(circle at center, #1a1a2e 0%, #0f0f1a 100%);
+            color: #e0e0e0;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1.5rem;
+        }
+        .astrology-chart {
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            border: 2px solid #4a5568;
+            position: relative;
+            background: url('https://www.transparenttextures.com/patterns/stardust.png');
+            box-shadow: 0 0 30px rgba(100, 100, 255, 0.2);
+        }
+        .planet-icon {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            font-weight: bold;
+            color: #ffd700;
+        }
+        .house-sector {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .btn-mystic {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: transform 0.2s;
+        }
+        .btn-mystic:hover { transform: scale(1.05); }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
 
-app.post('/api/generate', async (req, res) => {
-  try {
-    const { name, dob, tob } = req.body || {};
-    if (!name || !dob) return res.status(400).json({ error: 'Missing name or dob' });
+    <div class="max-w-6xl mx-auto">
+        <header class="text-center mb-12">
+            <h1 class="text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600 mb-2">
+                BẠN ĐỒ SAO Zz
+            </h1>
+            <p class="text-gray-400 italic">Khám phá bản ngã qua những vì sao</p>
+        </header>
 
-    const apiKey = process.env.GEN_API_KEY;
-    if (!apiKey) return res.status(500).json({ error: 'Server missing GEN_API_KEY env variable' });
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <div class="lg:col-span-4">
+                <div class="glass-card p-6 shadow-xl">
+                    <h2 class="text-2xl font-bold mb-6 flex items-center">
+                        <span class="mr-2">✨</span> Thông tin cá nhân
+                    </h2>
+                    <form id="astrologyForm" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Họ và tên</label>
+                            <input type="text" id="fullname" placeholder="Nhập tên của bạn..." class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 focus:ring-2 focus:ring-purple-500 outline-none">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Ngày sinh</label>
+                                <input type="date" id="dob" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 focus:ring-2 focus:ring-purple-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Giờ sinh (Tùy chọn)</label>
+                                <input type="time" id="tob" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 focus:ring-2 focus:ring-purple-500 outline-none">
+                            </div>
+                        </div>
+                        <button type="button" onclick="generateChart()" class="w-full btn-mystic text-white font-bold py-4 rounded-xl shadow-lg mt-4">
+                            XUẤT BẢN ĐỒ SAO
+                        </button>
+                    </form>
+                </div>
 
-    // Build prompt on server to avoid trusting client inputs alone
-    const prompt =
-      `Bạn là nhà chiêm tinh học chuyên nghiệp của BẠN ĐỒ SAO Zz.\n` +
-      `Hãy giải mã bản đồ sao cho: ${name}, sinh ngày: ${dob}, giờ sinh: ${tob || 'Không rõ giờ sinh'}.\n` +
-      `Phân tích chi tiết các mục sau: Tuổi thơ, Gia đình, Sức khỏe, Sự nghiệp, Tiền bạc, Nhà cửa, Cha mẹ, Bạn bè, Anh em, Tình duyên, Hôn nhân, Con cái.\n` +
-      `Yêu cầu: Trả về kết quả bằng tiếng Việt, định dạng HTML đẹp mắt (dùng <h3> cho tiêu đề mục, <p> cho nội dung). Văn phong huyền bí, lôi cuốn.`;
+                <div class="glass-card p-6 mt-8">
+                    <h3 class="font-bold mb-4">Ký hiệu hành tinh</h3>
+                    <div class="grid grid-cols-2 gap-2 text-sm text-gray-300">
+                        <div>☀️ Mặt Trời (Sun)</div>
+                        <div>🌙 Mặt Trăng (Moon)</div>
+                        <div>☿ Sao Thủy (Mercury)</div>
+                        <div>♀ Sao Kim (Venus)</div>
+                        <div>♂ Sao Hỏa (Mars)</div>
+                        <div>♃ Sao Mộc (Jupiter)</div>
+                        <div>♄ Sao Thổ (Saturn)</div>
+                        <div>♅ Thiên Vương</div>
+                    </div>
+                </div>
+            </div>
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-    const body = { contents: [{ parts: [{ text: prompt }] }] };
+            <div class="lg:col-span-8 space-y-8">
+                <div id="resultSection" class="hidden">
+                    <div class="glass-card p-8 flex flex-col items-center justify-center">
+                        <h2 class="text-2xl font-bold mb-8 text-purple-300" id="displayUser">Bản Đồ Sao của bạn</h2>
+                        
+                        <div class="astrology-chart flex items-center justify-center">
+                            <div class="absolute w-full h-full border border-dashed border-gray-600 rounded-full opacity-20"></div>
+                            <div class="w-4 h-4 bg-white rounded-full z-10 shadow-[0_0_10px_white]"></div>
+                            
+                            <div class="absolute w-full h-[1px] bg-gray-700 rotate-0"></div>
+                            <div class="absolute w-full h-[1px] bg-gray-700 rotate-45"></div>
+                            <div class="absolute w-full h-[1px] bg-gray-700 rotate-90"></div>
+                            <div class="absolute w-full h-[1px] bg-gray-700 rotate-[135deg]"></div>
 
-    const apiResp = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
+                            <div class="planet-icon" style="top: 20%; left: 30%;">☀️</div>
+                            <div class="planet-icon" style="top: 70%; left: 60%;">🌙</div>
+                            <div class="planet-icon" style="top: 40%; left: 80%;">♂</div>
+                        </div>
 
-    if (!apiResp.ok) {
-      const text = await apiResp.text().catch(() => '');
-      console.error('Generative API error', apiResp.status, text);
-      return res.status(502).json({ error: 'Upstream API error', status: apiResp.status, text });
-    }
+                        <p class="mt-8 text-gray-400 text-sm text-center">Hình ảnh mô phỏng vị trí các hành tinh tại thời điểm bạn sinh ra.</p>
+                    </div>
 
-    const data = await apiResp.json();
-    // Extract content from likely response shapes
-    const content =
-      data.content ??
-      data.text ??
-      data.result ??
-      data.candidates?.[0]?.content?.parts?.[0]?.text ??
-      data.candidates?.[0]?.content?.[0]?.text ??
-      data.output?.[0]?.content?.[0]?.text ??
-      null;
+                    <div class="mt-8">
+                        <div class="flex space-x-2 mb-4 overflow-x-auto pb-2">
+                            <button onclick="switchTab('planets')" class="tab-btn px-6 py-2 rounded-full bg-purple-600 text-white font-medium">Hành Tinh</button>
+                            <button onclick="switchTab('houses')" class="tab-btn px-6 py-2 rounded-full bg-gray-800 hover:bg-gray-700 font-medium">12 Nhà (Lĩnh vực)</button>
+                            <button onclick="switchTab('zodiac')" class="tab-btn px-6 py-2 rounded-full bg-gray-800 hover:bg-gray-700 font-medium">Cung Hoàng Đạo</button>
+                        </div>
 
-    if (!content) {
-      console.warn('Unexpected API response shape', data);
-      return res.status(502).json({ error: 'Unexpected upstream response' });
-    }
+                        <div id="planets" class="tab-content active glass-card p-6">
+                            <h3 class="text-xl font-bold text-yellow-400 mb-4">Năng lượng các hành tinh</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="p-3 border-l-4 border-yellow-500 bg-white/5">
+                                    <strong class="text-white">Mặt Trời:</strong> Đại diện cho bản ngã, lý tưởng và con đường khẳng định bản thân.
+                                </div>
+                                <div class="p-3 border-l-4 border-blue-400 bg-white/5">
+                                    <strong class="text-white">Mặt Trăng:</strong> Đại diện cho thế giới cảm xúc, tiềm thức và nhu cầu an toàn.
+                                </div>
+                                <div class="p-3 border-l-4 border-green-400 bg-white/5">
+                                    <strong class="text-white">Sao Thủy:</strong> Cách bạn suy nghĩ, giao tiếp và xử lý thông tin.
+                                </div>
+                                <div class="p-3 border-l-4 border-pink-400 bg-white/5">
+                                    <strong class="text-white">Sao Kim:</strong> Ngôn ngữ tình yêu, giá trị thẩm mỹ và sự hưởng thụ.
+                                </div>
+                            </div>
+                        </div>
 
-    // Return a simple JSON containing the HTML content
-    res.json({ content });
-  } catch (err) {
-    console.error('Server error /api/generate', err);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+                        <div id="houses" class="tab-content glass-card p-6">
+                            <h3 class="text-xl font-bold text-blue-400 mb-4">Các lĩnh vực cuộc sống (12 Nhà)</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                                <div class="space-y-4">
+                                    <p><strong>Nhà 1:</strong> Ngoại hình, phong thái, cái tôi cá nhân.</p>
+                                    <p><strong>Nhà 2:</strong> Tiền bạc, tài sản, giá trị vật chất.</p>
+                                    <p><strong>Nhà 3:</strong> Anh em, học tập ngắn hạn, giao tiếp xã hội.</p>
+                                    <p><strong>Nhà 4:</strong> Gia đình, cội nguồn, tuổi thơ, nhà cửa.</p>
+                                    <p><strong>Nhà 5:</strong> Con cái, sáng tạo, sở thích, tình yêu chớm nở.</p>
+                                    <p><strong>Nhà 6:</strong> Sức khỏe, công việc hàng ngày, thói quen sinh hoạt.</p>
+                                </div>
+                                <div class="space-y-4">
+                                    <p><strong>Nhà 7:</strong> Hôn phối, bạn đời, đối tác kinh doanh.</p>
+                                    <p><strong>Nhà 8:</strong> Biến đổi, tài sản thừa kế, sự bí mật.</p>
+                                    <p><strong>Nhà 9:</strong> Triết lý, du lịch xa, học vấn bậc cao.</p>
+                                    <p><strong>Nhà 10:</strong> Sự nghiệp, địa vị, cha mẹ (thường là người có ảnh hưởng lớn).</p>
+                                    <p><strong>Nhà 11:</strong> Bạn bè, cộng đồng, hy vọng và ước mơ.</p>
+                                    <p><strong>Nhà 12:</strong> Tâm linh, tiềm thức, những gì ẩn giấu.</p>
+                                </div>
+                            </div>
+                        </div>
 
-app.listen(PORT, () => {
-  console.log(`Server listening on ${PORT}`);
-});
+                        <div id="zodiac" class="tab-content glass-card p-6">
+                            <h3 class="text-xl font-bold text-pink-400 mb-4">Cách thức thể hiện (Cung Hoàng Đạo)</h3>
+                            <p class="text-gray-300">Cung hoàng đạo nơi hành tinh tọa lạc sẽ cho biết năng lượng đó được thể hiện "như thế nào" (ví dụ: Sao Kim ở Kim Ngưu sẽ yêu một cách thực tế và bền bỉ).</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="emptyState" class="glass-card p-12 text-center">
+                    <div class="text-6xl mb-4">🌌</div>
+                    <h3 class="text-xl font-semibold mb-2">Sẵn sàng khám phá?</h3>
+                    <p class="text-gray-400">Hãy nhập thông tin bên trái và nhấn nút để bắt đầu hành trình của bạn.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function generateChart() {
+            const name = document.getElementById('fullname').value;
+            const dob = document.getElementById('dob').value;
+
+            if (!name || !dob) {
+                alert("Vui lòng nhập tên và ngày sinh!");
+                return;
+            }
+
+            document.getElementById('emptyState').classList.add('hidden');
+            document.getElementById('resultSection').classList.remove('hidden');
+            document.getElementById('displayUser').innerText = "Bản Đồ Sao của " + name;
+
+            // Scroll to result
+            window.scrollTo({ top: document.getElementById('resultSection').offsetTop - 50, behavior: 'smooth' });
+        }
+
+        function switchTab(tabId) {
+            // Hide all contents
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            // Deactivate all buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-purple-600');
+                btn.classList.add('bg-gray-800');
+            });
+
+            // Show current tab
+            document.getElementById(tabId).classList.add('active');
+            event.currentTarget.classList.remove('bg-gray-800');
+            event.currentTarget.classList.add('bg-purple-600');
+        }
+    </script>
+</body>
+</html>
+"""
+
+# Save to a file for the user
+with open("ban_do_sao_zz.html", "w", encoding="utf-8") as f:
+    f.write(html_content)
+    
