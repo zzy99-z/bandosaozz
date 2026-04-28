@@ -1,244 +1,67 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BẠN ĐỒ SAO Zz</title>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;500&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
-    <style>
-        :root { --gold: #C3A461; --dark: #0b0e14; --glass: rgba(255, 255, 255, 0.06); --muted: rgba(255,255,255,0.65); }
-        * { box-sizing: border-box; }
-        body { background: var(--dark); color: #fff; font-family: 'Montserrat', sans-serif; margin: 0; background-image: radial-gradient(circle at center, #1a1a2e 0%, #0b0e14 100%); min-height: 100vh; }
-        .container { max-width: 900px; margin: 0 auto; padding: 32px 18px; }
-        h1 { font-family: 'Playfair Display', serif; color: var(--gold); text-align: center; letter-spacing: 3px; font-size: 2.2rem; margin: 0 0 8px; }
-        .subtitle { text-align:center; opacity:0.7; font-size: 0.9rem; margin-bottom: 26px; color: var(--muted); }
+// Minimal Node/Express proxy for /api/generate
+// Requirements: Node 18+ (has global fetch), or install node-fetch for older Node.
+const express = require('express');
+const path = require('path');
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-        .glass-card { background: var(--glass); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.06); padding: 22px; border-radius: 16px; margin-bottom: 22px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
-        form { display: grid; gap: 12px; }
-        label { display: block; color: var(--gold); font-size: 0.9rem; font-weight: 600; }
-        input[type="text"], input[type="date"], input[type="time"] { width: 100%; padding: 10px 12px; margin-top: 6px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); color: #fff; border-radius: 8px; outline: none; }
-        .row { display:flex; gap:12px; }
-        .row .col { flex:1; }
-        .actions { display:flex; gap:12px; align-items:center; }
-        .btn-main { background: var(--gold); color: #000; border: none; padding: 12px 18px; font-weight: 700; border-radius: 999px; cursor: pointer; transition: 0.18s; }
-        .btn-main[disabled] { opacity: 0.6; cursor: not-allowed; transform: none; }
-        .btn-ghost { background: transparent; color: var(--gold); border: 1px solid rgba(195,164,97,0.15); padding: 10px 14px; border-radius: 10px; cursor: pointer; }
-        .btn-small { padding: 8px 12px; font-size: 0.9rem; }
-        .btn-main:hover:not([disabled]) { box-shadow: 0 6px 22px rgba(195,164,97,0.14); transform: translateY(-2px); }
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public'))); // serve index.html from ./public
 
-        #resultArea { display: none; margin-top: 18px; }
-        .ai-content { line-height: 1.75; font-size: 0.98rem; color: #e8e8e8; }
-        .ai-content h3 { color: var(--gold); border-bottom: 1px solid rgba(195,164,97,0.18); padding-bottom: 8px; margin-top: 18px; font-family: 'Playfair Display', serif; }
-        .loading { text-align: center; color: var(--gold); font-style: italic; padding: 18px; animation: pulse 1.4s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+app.post('/api/generate', async (req, res) => {
+  try {
+    const { name, dob, tob } = req.body || {};
+    if (!name || !dob) return res.status(400).json({ error: 'Missing name or dob' });
 
-        .tarot-section { border-top: 1px solid rgba(195,164,97,0.08); padding-top: 18px; text-align: center; margin-top: 12px; }
-        .point-tag { font-size: 1rem; color: var(--gold); margin-bottom: 10px; }
+    const apiKey = process.env.GEN_API_KEY;
+    if (!apiKey) return res.status(500).json({ error: 'Server missing GEN_API_KEY env variable' });
 
-        .result-toolbar { display:flex; gap:8px; justify-content:center; margin-top:12px; flex-wrap:wrap; }
-        .muted { color: var(--muted); font-size: 0.9rem; }
+    // Build prompt on server to avoid trusting client inputs alone
+    const prompt =
+      `Bạn là nhà chiêm tinh học chuyên nghiệp của BẠN ĐỒ SAO Zz.\n` +
+      `Hãy giải mã bản đồ sao cho: ${name}, sinh ngày: ${dob}, giờ sinh: ${tob || 'Không rõ giờ sinh'}.\n` +
+      `Phân tích chi tiết các mục sau: Tuổi thơ, Gia đình, Sức khỏe, Sự nghiệp, Tiền bạc, Nhà cửa, Cha mẹ, Bạn bè, Anh em, Tình duyên, Hôn nhân, Con cái.\n` +
+      `Yêu cầu: Trả về kết quả bằng tiếng Việt, định dạng HTML đẹp mắt (dùng <h3> cho tiêu đề mục, <p> cho nội dung). Văn phong huyền bí, lôi cuốn.`;
 
-        /* Responsive */
-        @media (max-width:600px) {
-            .row { flex-direction: column; }
-            h1 { font-size: 1.6rem; }
-        }
-    </style>
-</head>
-<body>
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const body = { contents: [{ parts: [{ text: prompt }] }] };
 
-<div class="container">
-    <h1>BẠN ĐỒ SAO Zz</h1>
-    <p class="subtitle">Giải mã số mệnh qua trí tuệ nhân tạo — (Lưu ý: API key phải nằm ở server)</p>
+    const apiResp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
 
-    <div class="glass-card" role="region" aria-labelledby="formTitle">
-        <h2 id="formTitle" style="font-family:'Playfair Display', serif; color:var(--gold); margin:0 0 8px;">Nhập thông tin</h2>
-        <form id="astroForm" onsubmit="event.preventDefault(); startAI();">
-            <div>
-                <label for="userName">Họ và Tên</label>
-                <input type="text" id="userName" name="userName" placeholder="Nhập tên của bạn..." autocomplete="name" required aria-required="true">
-            </div>
-            <div class="row">
-                <div class="col">
-                    <label for="dob">Ngày tháng năm sinh</label>
-                    <input type="date" id="dob" name="dob" required aria-required="true">
-                </div>
-                <div class="col">
-                    <label for="tob">Giờ sinh (nếu biết)</label>
-                    <input type="time" id="tob" name="tob">
-                </div>
-            </div>
-            <div class="actions">
-                <button type="submit" id="generateBtn" class="btn-main">Tạo Bản Đồ Sao Ngay</button>
-                <button type="button" id="clearBtn" class="btn-ghost btn-small" onclick="clearForm()">Xóa</button>
-                <div style="margin-left:auto;" class="muted">Kết quả sẽ được lưu cục bộ trong trình duyệt.</div>
-            </div>
-        </form>
-    </div>
-
-    <div id="resultArea" class="glass-card" role="region" aria-live="polite">
-        <h2 style="text-align:center; color: var(--gold); font-family: 'Playfair Display', serif; margin:0;">Lời Giải Mã Từ Vũ Trụ</h2>
-        <div id="aiResponse" class="ai-content" style="margin-top:12px"></div>
-
-        <div class="result-toolbar">
-            <button class="btn-main btn-small" id="copyBtn" onclick="copyResult()">Sao chép</button>
-            <button class="btn-ghost btn-small" id="downloadBtn" onclick="downloadResult()">Tải xuống .html</button>
-            <button class="btn-ghost btn-small" id="retryBtn" onclick="startAI()">Thử lại</button>
-        </div>
-    </div>
-
-    <div class="tarot-section">
-        <p class="point-tag">Năng lượng tích lũy: <span id="currentPoints">0</span>/50 pts</p>
-        <button class="btn-main" style="width:auto; padding: 10px 18px; font-size: 0.9rem;" onclick="checkIn()">Điểm danh nhận 5 điểm</button>
-    </div>
-
-    <p style="margin-top:14px; font-size:0.85rem; color:var(--muted)">Ghi chú: Để tránh lộ API key, frontend gửi yêu cầu vào đường dẫn <code>/api/generate</code>. Cài đặt một endpoint server (ví dụ Node/Express) để chuyển tiếp tới Google Generative Language hoặc dịch vụ bạn dùng và lưu API key ở server.</p>
-</div>
-
-<script>
-    // LOCAL STORAGE KEYS
-    const LS_POINTS = 'zz_points_v2';
-    const LS_LAST_CHECK = 'zz_last_check_v2';
-    const LS_LAST_RESULT = 'zz_last_result_v2';
-
-    // Initialization
-    let userPoints = Number(localStorage.getItem(LS_POINTS) || 0);
-    document.getElementById('currentPoints').innerText = userPoints;
-
-    // Restore last result if available
-    const last = localStorage.getItem(LS_LAST_RESULT);
-    if (last) {
-        showResult(last);
+    if (!apiResp.ok) {
+      const text = await apiResp.text().catch(() => '');
+      console.error('Generative API error', apiResp.status, text);
+      return res.status(502).json({ error: 'Upstream API error', status: apiResp.status, text });
     }
 
-    function clearForm() {
-        document.getElementById('astroForm').reset();
+    const data = await apiResp.json();
+    // Extract content from likely response shapes
+    const content =
+      data.content ??
+      data.text ??
+      data.result ??
+      data.candidates?.[0]?.content?.parts?.[0]?.text ??
+      data.candidates?.[0]?.content?.[0]?.text ??
+      data.output?.[0]?.content?.[0]?.text ??
+      null;
+
+    if (!content) {
+      console.warn('Unexpected API response shape', data);
+      return res.status(502).json({ error: 'Unexpected upstream response' });
     }
 
-    function checkIn() {
-        const today = new Date().toDateString();
-        if (localStorage.getItem(LS_LAST_CHECK) === today) {
-            alert("Hôm nay bạn đã nhận năng lượng rồi!");
-            return;
-        }
-        userPoints += 5;
-        localStorage.setItem(LS_POINTS, String(userPoints));
-        localStorage.setItem(LS_LAST_CHECK, today);
-        document.getElementById('currentPoints').innerText = userPoints;
-        alert("Chúc mừng! Bạn nhận được 5 điểm.");
-    }
+    // Return a simple JSON containing the HTML content
+    res.json({ content });
+  } catch (err) {
+    console.error('Server error /api/generate', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
-    // Utility to safely access elements
-    const $ = id => document.getElementById(id);
-
-    // Enable/disable UI while fetching
-    function setLoading(loading) {
-        $('generateBtn').disabled = loading;
-        $('retryBtn').disabled = loading;
-        if (loading) {
-            $('aiResponse').innerHTML = '<div class="loading">Đang kết nối với các vì sao để giải mã...</div>';
-            $('resultArea').style.display = 'block';
-            window.scrollTo({ top: $('resultArea').offsetTop - 20, behavior: 'smooth' });
-        }
-    }
-
-    // Main function to call server-side proxy at /api/generate
-    async function startAI() {
-        const name = $('userName').value.trim();
-        const dob = $('dob').value;
-        const tob = $('tob').value || 'Không rõ giờ sinh';
-
-        if (!name || !dob) {
-            alert('Vui lòng điền tên và ngày sinh!');
-            return;
-        }
-
-        setLoading(true);
-
-        // Prepare prompt (server can rebuild or accept structured data)
-        const payload = { name, dob, tob };
-
-        try {
-            // IMPORTANT: Implement a server endpoint that holds your API key and forwards the request.
-            // Example server path: POST /api/generate with JSON body { name, dob, tob }
-            const resp = await fetch('/api/generate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!resp.ok) {
-                const t = await resp.text().catch(() => '');
-                console.error('Server proxy error', resp.status, t);
-                showResult(`<p>Lỗi từ server (mã ${resp.status}). Vui lòng thử lại sau.</p>`);
-                setLoading(false);
-                return;
-            }
-
-            const data = await resp.json().catch(() => null);
-
-            // Support multiple possible shapes; server should return a string field 'content' ideally
-            let content = null;
-            if (data) {
-                content = data.content ?? data.text ?? data.result ??
-                    data.candidates?.[0]?.content?.parts?.[0]?.text ??
-                    data.candidates?.[0]?.content?.[0]?.text ??
-                    data.output?.[0]?.content?.[0]?.text ?? null;
-            }
-
-            if (content) {
-                // Clean common code fences
-                content = String(content).replace(/```html/g, '').replace(/```/g, '');
-                showResult(content);
-                // persist last result
-                localStorage.setItem(LS_LAST_RESULT, content);
-            } else {
-                console.warn('Unexpected response shape from proxy:', data);
-                showResult('<p>Vũ trụ chưa phản hồi, hãy thử nhấn lại một lần nữa nhé!</p>');
-            }
-        } catch (err) {
-            console.error('startAI error', err);
-            showResult('<p>Lỗi kết nối hoặc lỗi nội bộ. Kiểm tra console để biết thêm chi tiết.</p>');
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    function showResult(html) {
-        $('aiResponse').innerHTML = html;
-        $('resultArea').style.display = 'block';
-        window.scrollTo({ top: $('resultArea').offsetTop - 20, behavior: 'smooth' });
-    }
-
-    async function copyResult() {
-        try {
-            const text = $('aiResponse').innerText || $('aiResponse').textContent || '';
-            await navigator.clipboard.writeText(text);
-            alert('Nội dung đã được sao chép vào clipboard.');
-        } catch (err) {
-            console.error('copyResult error', err);
-            alert('Không thể sao chép. Hãy thử thủ công.');
-        }
-    }
-
-    function downloadResult() {
-        const html = $('aiResponse').innerHTML || '';
-        if (!html) { alert('Chưa có nội dung để tải xuống.'); return; }
-
-        // Wrap in a minimal HTML document
-        const doc = `<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kết quả Bản Đồ Sao</title></head><body style="font-family:sans-serif">${html}</body></html>`;
-        const blob = new Blob([doc], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'bandosao_result.html';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-    }
-
-</script>
-
-</body>
-</html>
+app.listen(PORT, () => {
+  console.log(`Server listening on ${PORT}`);
+});
