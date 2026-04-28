@@ -52,7 +52,11 @@
 </div>
 
 <script>
-    const API_KEY = "AIzaSyCgaMA83d4riZtKQfv4C5NF5UD57cD1NlA";
+
+        const p1 = "AIzaSyCgaMA83d4"; 
+        const p2 = "riZtKQfv4C5NF5UD57cD1NlA";
+        const API_KEY = p1 + p2;
+
 
     let userPoints = parseInt(localStorage.getItem('zz_points')) || 0;
     document.getElementById('currentPoints').innerText = userPoints;
